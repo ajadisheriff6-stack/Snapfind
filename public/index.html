@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snapfind — Visual Product Search</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0c; --surface: #111114; --border: #1e1e24; --border-b: #2e2e3a;
+    --amber: #f5a623; --amber-d: #a86e12; --amber-g: rgba(245,166,35,0.1);
+    --text: #e8e8f0; --muted: #5a5a72; --green: #3ddc97; --red: #ff5f5f; --r: 6px;
+  }
+  html, body { min-height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
+
+  /* HEADER */
+  header { display:flex; align-items:center; justify-content:space-between; padding:16px 32px; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:50; background:rgba(10,10,12,0.95); backdrop-filter:blur(12px); }
+  .logo { font-family:'Bebas Neue',sans-serif; font-size:26px; letter-spacing:3px; color:var(--amber); }
+  .logo span { color:var(--text); }
+  .tagline { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); letter-spacing:1.5px; text-transform:uppercase; }
+  .hdr-btn { background:transparent; border:1px solid var(--border-b); color:var(--muted); font-family:'DM Mono',monospace; font-size:11px; padding:7px 14px; border-radius:var(--r); cursor:pointer; transition:all .2s; text-transform:uppercase; }
+  .hdr-btn:hover { border-color:var(--amber); color:var(--amber); }
+
+  /* MAIN */
+  main { max-width:960px; margin:0 auto; padding:48px 24px 80px; }
+
+  /* HERO */
+  .hero { text-align:center; margin-bottom:48px; }
+  .hero h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(52px,9vw,96px); letter-spacing:4px; line-height:1; }
+  .hero h1 em { color:var(--amber); font-style:normal; }
+  .hero p { margin-top:12px; color:var(--muted); font-size:15px; font-weight:300; }
+
+  /* CARD */
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .card-hdr { padding:16px 26px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+  .badge { font-family:'DM Mono',monospace; font-size:10px; color:var(--amber); background:var(--amber-g); border:1px solid var(--amber-d); padding:3px 10px; border-radius:20px; }
+  .card-hdr h2 { font-size:13px; font-weight:400; color:var(--muted); }
+  .finder-grid { display:grid; grid-template-columns:1fr 1fr; }
+  @media(max-width:620px) { .finder-grid { grid-template-columns:1fr; } }
+
+  /* UPLOAD ZONE */
+  .upload-zone { border-right:1px solid var(--border); padding:28px 24px; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:260px; cursor:pointer; transition:background .2s; position:relative; }
+  @media(max-width:620px) { .upload-zone { border-right:none; border-bottom:1px solid var(--border); } }
+  .upload-zone:hover, .upload-zone.drag { background:var(--amber-g); }
+  .upload-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .up-icon { width:50px; height:50px; border:2px dashed var(--border-b); border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:14px; transition:border-color .2s; }
+  .upload-zone:hover .up-icon { border-color:var(--amber); }
+  .up-icon svg { stroke:var(--muted); transition:stroke .2s; }
+  .upload-zone:hover .up-icon svg { stroke:var(--amber); }
+  .up-label { font-size:13px; color:var(--muted); text-align:center; line-height:1.7; }
+  .up-label strong { color:var(--text); display:block; font-size:14px; font-weight:600; margin-bottom:2px; }
+  #previewImg { max-width:150px; max-height:150px; object-fit:contain; border-radius:8px; border:1px solid var(--border); background:#fff; display:none; }
+  #previewName { font-family:'DM Mono',monospace; font-size:11px; color:var(--green); margin-top:10px; text-align:center; display:none; }
+  #changeHint { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); margin-top:6px; display:none; }
+
+  /* CONTROLS */
+  .right-panel { padding:26px; display:flex; flex-direction:column; gap:18px; }
+  label { display:block; font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; margin-bottom:7px; }
+  input[type=url], input[type=text] { width:100%; background:var(--bg); border:1px solid var(--border-b); color:var(--text); font-family:'DM Mono',monospace; font-size:13px; padding:11px 14px; border-radius:var(--r); outline:none; transition:border-color .2s, box-shadow .2s; }
+  input:focus { border-color:var(--amber); box-shadow:0 0 0 3px var(--amber-g); }
+  input::placeholder { color:var(--muted); }
+  .quick-sites { display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
+  .qs { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); border:1px solid var(--border-b); padding:4px 10px; border-radius:20px; cursor:pointer; transition:all .15s; background:transparent; }
+  .qs:hover { border-color:var(--amber); color:var(--amber); background:var(--amber-g); }
+  #searchBtn { width:100%; padding:14px; border-radius:var(--r); border:none; font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:3px; background:var(--amber); color:#000; transition:all .2s; cursor:pointer; position:relative; overflow:hidden; margin-top:auto; }
+  #searchBtn:hover:not(:disabled) { background:#f7b740; transform:translateY(-1px); box-shadow:0 6px 20px rgba(245,166,35,.3); }
+  #searchBtn:disabled { background:var(--border-b); color:var(--muted); cursor:not-allowed; transform:none; box-shadow:none; }
+  #searchBtn.loading { background:var(--amber-d) !important; cursor:wait !important; transform:none !important; }
+  #searchBtn.loading .btn-txt { opacity:0; }
+  #searchBtn.loading::after { content:''; position:absolute; top:50%; left:50%; width:20px; height:20px; border:2px solid rgba(0,0,0,.3); border-top-color:#000; border-radius:50%; transform:translate(-50%,-50%); animation:spin .7s linear infinite; }
+
+  /* LOADER */
+  #loader { display:none; margin-top:24px; }
+  #loader.show { display:block; }
+  .loader-box { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:42px 28px; display:flex; flex-direction:column; align-items:center; gap:16px; }
+  .bar-wrap { width:100%; max-width:280px; height:2px; background:var(--border); border-radius:2px; overflow:hidden; }
+  .bar { height:100%; background:linear-gradient(90deg,var(--amber-d),var(--amber)); animation:scan 1.8s ease-in-out infinite; border-radius:2px; }
+  .loader-txt { font-family:'DM Mono',monospace; font-size:12px; color:var(--muted); }
+  #scanStep { font-family:'DM Mono',monospace; font-size:12px; color:var(--amber); }
+
+  /* RESULT */
+  #result { margin-top:24px; display:none; }
+  #result.show { display:block; }
+
+  /* result card */
+  .res-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .res-head { background:linear-gradient(90deg,rgba(61,220,151,.07),transparent); padding:16px 26px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .res-head-l { display:flex; align-items:center; gap:10px; }
+  .pdot { width:8px; height:8px; border-radius:50%; background:var(--green); animation:pulse 1.5s infinite; display:inline-block; }
+  .res-head h3 { font-family:'DM Mono',monospace; font-size:12px; color:var(--green); letter-spacing:.5px; }
+  .match-badge { font-family:'DM Mono',monospace; font-size:10px; padding:3px 9px; border-radius:12px; border:1px solid var(--border-b); color:var(--muted); }
+  .res-body { padding:26px; }
+  .res-grid { display:grid; grid-template-columns:170px 1fr; gap:24px; margin-bottom:20px; }
+  @media(max-width:560px) { .res-grid { grid-template-columns:1fr; } }
+  .res-img-box img { width:170px; max-height:200px; object-fit:contain; border-radius:8px; border:1px solid var(--border); background:#fff; }
+  .res-img-ph { width:170px; height:170px; border-radius:8px; border:1px solid var(--border); background:var(--bg); display:flex; align-items:center; justify-content:center; font-size:40px; }
+  .res-name { font-size:20px; font-weight:700; line-height:1.3; margin-bottom:6px; }
+  .res-meta { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); margin-bottom:14px; }
+  .res-price { font-family:'Bebas Neue',sans-serif; font-size:46px; color:var(--amber); line-height:1; }
+  .res-orig { font-family:'DM Mono',monospace; font-size:12px; color:var(--red); text-decoration:line-through; margin-top:3px; }
+  .res-desc { font-size:13px; color:var(--muted); line-height:1.7; margin-top:10px; }
+  .divider { border:none; border-top:1px solid var(--border); margin:18px 0; }
+  .det-row { display:flex; gap:14px; padding:8px 0; border-bottom:1px solid var(--border); }
+  .det-row:last-child { border-bottom:none; }
+  .dk { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); min-width:100px; flex-shrink:0; padding-top:1px; }
+  .dv { font-size:13px; color:var(--text); line-height:1.6; }
+  .pay-sect { margin-top:20px; }
+  .sect-lbl { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:10px; }
+  .tag-list { display:flex; flex-wrap:wrap; gap:7px; }
+  .tag { border:1px solid var(--border-b); padding:5px 12px; border-radius:var(--r); font-family:'DM Mono',monospace; font-size:12px; background:var(--bg); }
+  .act-row { display:flex; gap:10px; margin-top:20px; flex-wrap:wrap; align-items:center; }
+  .btn-view { background:var(--amber); color:#000; border:none; padding:12px 20px; font-family:'DM Mono',monospace; font-size:13px; font-weight:700; border-radius:var(--r); cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:7px; transition:all .2s; }
+  .btn-view:hover { background:#f7b740; box-shadow:0 4px 16px rgba(245,166,35,.3); }
+  .btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--border-b); padding:12px 18px; font-family:'DM Mono',monospace; font-size:12px; border-radius:var(--r); cursor:pointer; transition:all .2s; }
+  .btn-ghost:hover { border-color:var(--amber); color:var(--amber); }
+  .search-note { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+
+  /* ERROR */
+  .err-box { background:rgba(255,95,95,.05); border:1px solid rgba(255,95,95,.2); border-radius:12px; padding:22px 26px; }
+  .err-box h4 { color:var(--red); font-size:15px; margin-bottom:10px; }
+  .err-code { font-family:'DM Mono',monospace; font-size:11px; background:var(--bg); padding:10px 14px; border-radius:4px; margin-top:10px; color:var(--red); border:1px solid var(--border); word-break:break-all; white-space:pre-wrap; }
+  .err-tips { margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,95,95,.15); font-size:12px; color:var(--muted); line-height:2.2; }
+
+  /* HISTORY PANEL */
+  #overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:190; display:none; backdrop-filter:blur(3px); }
+  #overlay.show { display:block; }
+  #histPanel { position:fixed; top:0; right:0; height:100vh; width:320px; max-width:95vw; background:var(--surface); border-left:1px solid var(--border); z-index:200; transform:translateX(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; }
+  #histPanel.open { transform:translateX(0); }
+  .hp-hdr { padding:18px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .hp-hdr h3 { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:2px; color:var(--amber); }
+  .cls-btn { background:none; border:none; color:var(--muted); cursor:pointer; font-size:18px; padding:4px; }
+  .cls-btn:hover { color:var(--text); }
+  #histList { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px; }
+  .hp-empty { text-align:center; color:var(--muted); font-family:'DM Mono',monospace; font-size:12px; margin-top:60px; line-height:2.4; }
+  .hp-item { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; cursor:pointer; transition:border-color .2s; }
+  .hp-item:hover { border-color:var(--amber-d); }
+  .hp-nm { font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px; }
+  .hp-site { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); margin-bottom:3px; }
+  .hp-price { font-family:'Bebas Neue',sans-serif; font-size:18px; color:var(--amber); }
+  .hp-date { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); margin-top:4px; }
+  .hp-clr { margin:0 12px 12px; background:none; border:1px solid rgba(255,95,95,.2); color:rgba(255,95,95,.5); font-family:'DM Mono',monospace; font-size:11px; padding:9px; border-radius:var(--r); cursor:pointer; transition:all .2s; }
+  .hp-clr:hover { border-color:var(--red); color:var(--red); }
+
+  footer { text-align:center; padding:26px; border-top:1px solid var(--border); font-family:'DM Mono',monospace; font-size:11px; color:#3a3a4a; line-height:2.2; }
+
+  @keyframes spin { to { transform:translate(-50%,-50%) rotate(360deg); } }
+  @keyframes scan { 0%{width:0;margin-left:0} 50%{width:100%;margin-left:0} 100%{width:0;margin-left:100%} }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.2} }
+</style>
+</head>
+<body>
+
+<!-- History -->
+<div id="overlay" onclick="closeHist()"></div>
+<aside id="histPanel">
+  <div class="hp-hdr">
+    <h3>History</h3>
+    <button class="cls-btn" onclick="closeHist()">✕</button>
+  </div>
+  <div id="histList"></div>
+  <button class="hp-clr" onclick="clearHist()">Clear All History</button>
+</aside>
+
+<header>
+  <div class="logo">Snap<span>find</span></div>
+  <div class="tagline">Visual Product Search</div>
+  <button class="hdr-btn" onclick="openHist()">⌛ History</button>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>Find Any<br><em>Product</em></h1>
+    <p>Upload an image · Pick a store · Get price, details &amp; payment options instantly</p>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr">
+      <span class="badge">STEP 1 &amp; 2</span>
+      <h2>Upload a product image &amp; choose your store</h2>
+    </div>
+    <div class="finder-grid">
+
+      <!-- Upload -->
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept="image/*" onchange="handleFile(event)">
+        <div class="up-icon" id="upIcon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <div class="up-label" id="upLabel">
+          <strong>Drop image here</strong>
+          or click to browse<br>
+          <span style="font-size:11px;opacity:.5">JPG · PNG · WEBP</span>
+        </div>
+        <img id="previewImg" src="" alt="preview">
+        <div id="previewName"></div>
+        <div id="changeHint">click to change image</div>
+      </div>
+
+      <!-- Controls -->
+      <div class="right-panel">
+        <div>
+          <label>Website / Store URL</label>
+          <input type="url" id="siteInput" placeholder="https://amazon.com" oninput="checkReady()">
+          <div class="quick-sites">
+            <button class="qs" onclick="setQ('https://amazon.com')">Amazon</button>
+            <button class="qs" onclick="setQ('https://walmart.com')">Walmart</button>
+            <button class="qs" onclick="setQ('https://ebay.com')">eBay</button>
+            <button class="qs" onclick="setQ('https://target.com')">Target</button>
+            <button class="qs" onclick="setQ('https://aliexpress.com')">AliExpress</button>
+            <button class="qs" onclick="setQ('https://jumia.com.ng')">Jumia NG</button>
+            <button class="qs" onclick="setQ('https://konga.com')">Konga</button>
+            <button class="qs" onclick="setQ('https://jiji.ng')">Jiji NG</button>
+          </div>
+        </div>
+        <div>
+          <label>Extra context <span style="opacity:.4;font-size:10px">(optional — helps a lot)</span></label>
+          <input type="text" id="notesInput" placeholder="e.g. Nike, black, size 42, under $100">
+        </div>
+        <button id="searchBtn" onclick="doSearch()" disabled>
+          <span class="btn-txt">FIND PRODUCT</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loader -->
+  <div id="loader">
+    <div class="loader-box">
+      <div class="bar-wrap"><div class="bar"></div></div>
+      <div class="loader-txt">AI is analyzing your image and deep searching the web…</div>
+      <div id="scanStep">▶ Reading product details from image</div>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div id="result"></div>
+</main>
+
+<footer>
+  🔒 No signup required &nbsp;·&nbsp; No data collected &nbsp;·&nbsp; History stored locally in your browser
+</footer>
+
+<script>
+// ── State ──
+let imgB64 = null, imgType = null;
+let stepTimer = null, si = 0;
+const STEPS = [
+  '▶ Reading product details from image',
+  '▶ Identifying brand, model & category',
+  '▶ Running web search queries',
+  '▶ Locating listing on your store',
+  '▶ Extracting price & payment info',
+  '▶ Compiling full product details…'
+];
+
+// ── Drag & Drop ──
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag'); if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]); });
+
+function handleFile(e) { if (e.target.files[0]) processFile(e.target.files[0]); }
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const src = ev.target.result;
+    imgB64 = src.split(',')[1];
+    imgType = file.type || 'image/jpeg';
+    document.getElementById('previewImg').src = src;
+    document.getElementById('previewImg').style.display = 'block';
+    document.getElementById('previewName').textContent = '✓ ' + file.name;
+    document.getElementById('previewName').style.display = 'block';
+    document.getElementById('changeHint').style.display = 'block';
+    document.getElementById('upLabel').style.display = 'none';
+    document.getElementById('upIcon').style.display = 'none';
+    checkReady();
+  };
+  reader.readAsDataURL(file);
+}
+
+function setQ(url) { document.getElementById('siteInput').value = url; checkReady(); }
+function checkReady() {
+  document.getElementById('searchBtn').disabled = !(imgB64 && document.getElementById('siteInput').value.trim());
+}
+
+// ── Search — calls OUR server, not Anthropic directly ──
+async function doSearch() {
+  const site = document.getElementById('siteInput').value.trim();
+  const notes = document.getElementById('notesInput').value.trim();
+
+  const btn = document.getElementById('searchBtn');
+  btn.disabled = true; btn.classList.add('loading');
+  document.getElementById('loader').classList.add('show');
+  const rs = document.getElementById('result');
+  rs.className = ''; rs.innerHTML = '';
+
+  si = 0; document.getElementById('scanStep').textContent = STEPS[0];
+  stepTimer = setInterval(() => { si = (si + 1) % STEPS.length; document.getElementById('scanStep').textContent = STEPS[si]; }, 2400);
+
+  try {
+    // ✅ Calls our own /api/search — no CORS, no API key in browser
+    const resp = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: imgB64, imageType: imgType, site, notes })
+    });
+
+    const raw = await resp.json();
+
+    if (raw.error && typeof raw.error === 'string') throw new Error(raw.error);
+
+    if (raw.error && raw.error.type) {
+      const e = raw.error;
+      if (e.type === 'authentication_error') throw new Error('Anthropic API key is invalid. Update ANTHROPIC_API_KEY in Replit Secrets.');
+      if (e.type === 'rate_limit_error') throw new Error('Rate limit hit. Wait a moment and try again.');
+      throw new Error(`API Error (${e.type}): ${e.message}`);
+    }
+
+    if (!raw.content?.length) throw new Error('Empty response from API. Please try again.');
+
+    const text = raw.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    if (!text.trim()) throw new Error('Model returned no text. Please retry.');
+
+    const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+    const jS = clean.indexOf('{'), jE = clean.lastIndexOf('}');
+    if (jS === -1 || jE === -1) throw new Error('Could not parse product data.\n\nModel said:\n' + text.slice(0, 400));
+
+    let product;
+    try { product = JSON.parse(clean.slice(jS, jE + 1)); }
+    catch { product = JSON.parse(clean.slice(jS, jE + 1).replace(/,(\s*[}\]])/g, '$1')); }
+
+    showResult(product);
+    saveHist(product);
+
+  } catch (err) {
+    showError(err.message || 'Unknown error');
+    console.error('[Snapfind]', err);
+  } finally {
+    clearInterval(stepTimer);
+    btn.classList.remove('loading'); btn.disabled = false;
+    document.getElementById('loader').classList.remove('show');
+  }
+}
+
+// ── Render Result ──
+function showResult(p) {
+  const domain = (() => { try { return new URL(p.site || '').hostname.replace('www.', ''); } catch { return p.site || ''; } })();
+  const avColor = (p.availability || '').toLowerCase().includes('out') ? 'var(--red)' : 'var(--green)';
+  const feats = (p.keyFeatures || []).map(f => `<div>• ${f}</div>`).join('');
+  const pays = (p.paymentOptions || []).map(o => `<span class="tag">${o}</span>`).join('');
+  const imgHtml = p.imageUrl
+    ? `<img src="${p.imageUrl}" alt="product" onerror="this.outerHTML='<div class=res-img-ph>📦</div>'">`
+    : `<div class="res-img-ph">📦</div>`;
+
+  document.getElementById('result').innerHTML = `
+    <div class="res-card">
+      <div class="res-head">
+        <div class="res-head-l"><span class="pdot"></span><h3>FOUND ON ${domain.toUpperCase()}</h3></div>
+        ${p.matchType ? `<span class="match-badge">${p.matchType}</span>` : ''}
+      </div>
+      <div class="res-body">
+        <div class="res-grid">
+          <div class="res-img-box">${imgHtml}</div>
+          <div>
+            <div class="res-name">${p.productName || 'Product Found'}</div>
+            <div class="res-meta">${[p.brand, p.model, p.seller].filter(Boolean).join(' · ')}</div>
+            <div class="res-price">${p.price || 'Price N/A'}</div>
+            ${p.originalPrice ? `<div class="res-orig">Was ${p.originalPrice}</div>` : ''}
+            ${p.description ? `<div class="res-desc">${p.description}</div>` : ''}
+          </div>
+        </div>
+        <hr class="divider">
+        <div>
+          ${p.availability ? `<div class="det-row"><div class="dk">Availability</div><div class="dv" style="color:${avColor}">${p.availability}</div></div>` : ''}
+          ${p.shipping ? `<div class="det-row"><div class="dk">Shipping</div><div class="dv">${p.shipping}</div></div>` : ''}
+          ${p.rating ? `<div class="det-row"><div class="dk">Rating</div><div class="dv">${p.rating}</div></div>` : ''}
+          ${feats ? `<div class="det-row"><div class="dk">Features</div><div class="dv">${feats}</div></div>` : ''}
+        </div>
+        ${pays ? `<div class="pay-sect"><div class="sect-lbl">Payment Options</div><div class="tag-list">${pays}</div></div>` : ''}
+        <div class="act-row">
+          ${p.productUrl ? `<a class="btn-view" href="${p.productUrl}" target="_blank" rel="noopener">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            VIEW &amp; BUY ON SITE
+          </a>` : ''}
+          <button class="btn-ghost" onclick="doSearch()">🔄 Search Again</button>
+        </div>
+        ${p.searchNote ? `<div class="search-note">🔍 ${p.searchNote}</div>` : ''}
+      </div>
+    </div>`;
+  document.getElementById('result').className = 'show';
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function showError(msg) {
+  document.getElementById('result').innerHTML = `
+    <div class="err-box">
+      <h4>⚠ Search Failed</h4>
+      <div style="color:var(--muted);font-size:13px">Exact error:</div>
+      <div class="err-code">${msg}</div>
+      <div class="err-tips">
+        <strong style="color:var(--text)">Quick fixes:</strong><br>
+        🔑 Check ANTHROPIC_API_KEY is set in Replit Secrets<br>
+        💡 Add brand/type hints in the "Extra context" box<br>
+        🌐 Make sure the URL starts with https://<br>
+        🔄 Try clicking "Find Product" again
+      </div>
+    </div>`;
+  document.getElementById('result').className = 'show';
+}
+
+// ── History ──
+function getHist() { try { return JSON.parse(localStorage.getItem('sf_hist') || '[]'); } catch { return []; } }
+function saveHist(p) {
+  const h = getHist();
+  h.unshift({ ...p, _at: new Date().toISOString() });
+  if (h.length > 60) h.splice(60);
+  localStorage.setItem('sf_hist', JSON.stringify(h));
+}
+function openHist() { renderHist(); document.getElementById('histPanel').classList.add('open'); document.getElementById('overlay').classList.add('show'); }
+function closeHist() { document.getElementById('histPanel').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
+function clearHist() { if (confirm('Clear all history?')) { localStorage.removeItem('sf_hist'); renderHist(); } }
+
+function renderHist() {
+  const list = document.getElementById('histList');
+  const h = getHist();
+  if (!h.length) { list.innerHTML = '<div class="hp-empty">No searches yet.<br>Results will appear here.</div>'; return; }
+  list.innerHTML = h.map((item, i) => {
+    const dom = (() => { try { return new URL(item.site || '').hostname.replace('www.', ''); } catch { return item.site || ''; } })();
+    const d = new Date(item._at);
+    const ds = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    return `<div class="hp-item" onclick="restoreResult(${i})">
+      <div class="hp-nm">${item.productName || 'Unknown'}</div>
+      <div class="hp-site">${dom}</div>
+      <div class="hp-price">${item.price || '—'}</div>
+      <div class="hp-date">${ds}</div>
+    </div>`;
+  }).join('');
+}
+
+function restoreResult(i) { showResult(getHist()[i]); closeHist(); }
+</script>
+</body>
+</html>
